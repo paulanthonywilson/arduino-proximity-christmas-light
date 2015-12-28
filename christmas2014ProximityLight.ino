@@ -16,15 +16,21 @@ const int amberDistance = 120;
 const int alarmDistance = 50;
 
 
-#define RED 11
+#define RED 9
 #define GREEN 10
-#define BLUE 9
+#define BLUE 11
 
 
 void setup() {
   Serial.begin(9600);
 
+  pinMode(RED, OUTPUT);
+  pinMode(GREEN, OUTPUT);
+  pinMode(BLUE, OUTPUT);
+  pinMode(TONE_PIN, INPUT);
   randomSeed(analogRead(0));
+  randomColour();
+
 }
 
 void writeColour(char colour_pin, int rgb_code) {
@@ -67,7 +73,7 @@ Applies a low pass filter to prevent anomalous readings triggering the alarm,
 particularly when voltage is low
 */
 const double filteringFactor = 0.1;
-double filteredProximity = 1000.0;
+double filteredProximity = 500.0;
 long getProximity() {
   long echoTime = sonar.ping_median();
   double proximity = (double) sonar.convert_cm(echoTime);
@@ -81,7 +87,6 @@ void alarm() {
   if (alarmSounded) return;
   red();
   Serial.println("alarm");
-  return;
   for (unsigned long freq = 125; freq <= 15000; freq += 10) {
     NewTone(TONE_PIN, freq); // Play the frequency (125 Hz to 15 kHz sweep in 10 Hz steps).
     delay(1); // Wait 1 ms so you can hear it.
@@ -92,6 +97,8 @@ void alarm() {
     NewTone(TONE_PIN, melody[thisNote], noteDuration); // Play thisNote for noteDuration.
     delay(noteDuration * 4 / 3); // Wait while the tone plays in the background, plus another 33% delay between notes.
   }
+  delay(500);
+  pinMode(TONE_PIN, INPUT); // Stop tone playing when colour changes
   alarmSounded = true;
 }
 
@@ -101,17 +108,19 @@ void amberAlert() {
 }
 
 long lastColourChange = 0;
+long colourChangeDuration = 1000;
 void allClear() {
   alarmSounded = false;
-  if (millis() - lastColourChange > 10000) {
+  if (millis() - lastColourChange > colourChangeDuration) {
     lastColourChange = millis();
     randomColour();
+    colourChangeDuration = random(0, 3000);
   }
 }
 
 void loop() {
   long proximity = getProximity();
-  //Serial.println(proximity);
+  Serial.println(proximity);
   if (proximity < alarmDistance && proximity > 0) {
     alarm();
   } else if (proximity < amberDistance) {
