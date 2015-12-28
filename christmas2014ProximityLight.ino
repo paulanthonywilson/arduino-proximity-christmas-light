@@ -62,9 +62,18 @@ void randomColour() {
   setColour(r, g, b);
 }
 
+/*
+Applies a low pass filter to prevent anomalous readings triggering the alarm,
+particularly when voltage is low
+*/
+const double filteringFactor = 0.1;
+double filteredProximity = 1000.0;
 long getProximity() {
   long echoTime = sonar.ping_median();
-  return sonar.convert_cm(echoTime);
+  double proximity = (double) sonar.convert_cm(echoTime);
+  filteredProximity = (proximity * filteringFactor) +
+                      (filteredProximity * (1 - filteringFactor));
+  return (long) filteredProximity;
 }
 
 boolean alarmSounded = false;
@@ -102,6 +111,7 @@ void allClear() {
 
 void loop() {
   long proximity = getProximity();
+  //Serial.println(proximity);
   if (proximity < alarmDistance && proximity > 0) {
     alarm();
   } else if (proximity < amberDistance) {
